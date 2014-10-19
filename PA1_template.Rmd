@@ -1,25 +1,192 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Reproducible Research - assignment 1"
+output: html_document
+keep_md: true
 ---
 
-
 ## Loading and preprocessing the data
+Show any code that is needed to
 
+1. Load the data (i.e. read.csv())
 
+2. Process/transform the data (if necessary) into a format suitable for your analysis
+
+```{r intro, results='hide'}
+library(sqldf)
+
+## set the working directory
+setwd("/Users/bart/Documents/R/Coursera/Cursus5/assignment1")
+
+## cleaning variables
+rm(list=ls())
+
+## created on non-english system, so setlocale()
+Sys.setlocale("LC_TIME", "C")
+
+activity <- read.csv("activity.csv", header = T, sep = ",")
+```
 
 ## What is mean total number of steps taken per day?
+For this part of the assignment, you can ignore the missing values in the dataset.
 
+1. Make a histogram of the total number of steps taken each day
 
+2. Calculate and report the mean and median total number of steps taken per day
+
+```{r}
+totsteps <- aggregate(x = activity$steps, by = list(activity$date), FUN = "sum", na.rm = T)
+colnames(totsteps) <- c("date", "steps")
+
+hist(totsteps$steps, breaks = 20, main = "Number of Steps", xlab = "Total number of steps taken each day", ylab = "Number of Days", col = "steelblue")
+
+mmean <- as.numeric(mean(totsteps$steps))
+mmedian <- as.numeric(median(totsteps$steps))
+mmean
+mmedian
+```
+The mean total number of steps is `r mmean`, the median is `r mmedian`. 
 
 ## What is the average daily activity pattern?
 
+1. Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
 
+2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+First the time series plot:
+```{r}
+meansteps <- aggregate(x = activity$steps, by = list(activity$interval), FUN = "mean", na.rm = T)
+colnames(meansteps) <- c("interval", "steps")
+# summary(meansteps)
+
+labels <- c("00:00", "05:00", "10:00", "15:00", "20:00")
+labels.at <- seq(0, 2000, 500)
+with(meansteps, plot(interval, steps, type = "l", xlab = "Time of day", xaxt = "n", ylab = "Number of steps"))
+axis(side = 1, at = labels.at, labels = labels)
+```
+
+Then the interval:
+
+```{r}
+maxsteps <- which.max(meansteps$steps) 
+maxinterval <- meansteps[maxsteps, "interval"]
+```
+
+The interval with the maximum number of steps is interval `r maxinterval`.
 
 ## Imputing missing values
+Note that there are a number of days/intervals where there are missing values (coded as NA). The presence of missing days may introduce bias into some calculations or summaries of the data.
 
+1. Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
 
+2. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+
+3. Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+4. Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+Just keep the measured steps:
+```{r}
+filledsteps <- na.omit(activity)
+# summary(filledsteps)
+```
+
+Use sqldf to construct SQL-like commands.
+Take the NA's (null in SQL) 
+```{r}
+strsql = " select date, interval, steps
+            from activity
+            where steps is null
+            order by date, interval"
+emptysteps <- sqldf(strsql, stringsAsFactors = FALSE)
+# summary(emptysteps)
+```
+
+Can we tell something about the dates without measured steps?
+```{r}
+strsql2 = " select distinct date
+            from emptysteps
+            order by date"
+emptydays <- sqldf(strsql2, stringsAsFactors = FALSE)
+summary(emptydays)
+```
+For some reason all the records without measured steps are in the same 8 days.
+
+Fill in the empty values with the means for the given interval
+Do so by combining the dataframe with the empty steps with the dataframe with the means,
+and keep only the calculated steps in a new dataframe.
+```{r}
+join_string <- "select
+              meansteps.steps
+              , emptysteps.date
+              , emptysteps.interval
+              from emptysteps
+                left join meansteps
+                on emptysteps.interval = meansteps.interval"
+
+joinedsteps <- sqldf(join_string, stringsAsFactors = FALSE)
+# summary(joinedsteps)
+
+newactivity <- rbind(filledsteps, joinedsteps)
+# summary(newactivity)
+```
+
+Perform the calculations on the new dataset and make a histogram.
+```{r}
+newtotsteps <- aggregate(x = newactivity$steps, by = list(newactivity$date), FUN = "sum", na.rm = T)
+colnames(newtotsteps) <- c("date", "steps")
+# summary(newtotsteps)
+
+hist(newtotsteps$steps, breaks = 20, main = "Number of Steps", xlab = "Total number of steps taken each day", ylab = "Number of Days", col = "steelblue")
+
+newmean <- as.numeric(mean(newtotsteps$steps))
+newmedian <- as.numeric(median(newtotsteps$steps))
+newmean
+newmedian
+```
+
+The original mean is `r mmean`. The new mean is `r newmean`.
+
+The original median is `r mmedian`. The new median is `r newmedian`.
+
+Median and mean are now the same, both have slightly changed.
+
+Using inline r-code creates strange looking numbers, so the r-output again:
+```{r}
+# original and new mean
+mmean
+newmean
+# original and new median
+mmedian
+newmedian
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+For this part the weekdays() function may be of some help here. Use the dataset with the filled-in missing values for this part.
+
+Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
+
+Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). 
+
+Add a new field, indicating weekend or not
+```{r}
+newactivity$weekday <- weekdays(as.Date(newactivity$date))
+newactivity$isweekend <- factor(ifelse(newactivity$weekday %in% c("Saturday", "Sunday"), "weekend",
+"weekday"))
+head(newactivity)
+```
+
+Plot the new situation.
+use plyr and ggplot for faster development.
+(own ref. p.54)
+```{r}
+library(plyr)
+library(ggplot2)
+
+daytypemean <- ddply(newactivity, .(interval, isweekend), summarise, mean = mean(steps))
+head(daytypemean)
+
+ggplot(daytypemean, aes(interval, mean)) + geom_line() + facet_grid(isweekend ~ .) + labs(x = "Interval", y = "Steps", title = "Activity by day type")
+```
+
+The plot shows a difference in activity, depending on the type of day (weekend or not). During working days activity starts earlier.
