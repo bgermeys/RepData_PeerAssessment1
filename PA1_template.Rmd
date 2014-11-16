@@ -1,7 +1,8 @@
 ---
 title: "Reproducible Research - assignment 1"
+## output: md_document
 output: html_document
-keep_md: true
+keep_md : TRUE
 ---
 
 ## Loading and preprocessing the data
@@ -190,3 +191,4 @@ ggplot(daytypemean, aes(interval, mean)) + geom_line() + facet_grid(isweekend ~ 
 ```
 
 The plot shows a difference in activity, depending on the type of day (weekend or not). During working days activity starts earlier.
+
