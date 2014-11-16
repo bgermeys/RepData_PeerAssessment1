@@ -191,4 +191,3 @@ ggplot(daytypemean, aes(interval, mean)) + geom_line() + facet_grid(isweekend ~ 
 ```
 
 The plot shows a difference in activity, depending on the type of day (weekend or not). During working days activity starts earlier.
-
