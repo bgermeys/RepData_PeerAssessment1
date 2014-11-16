@@ -26,7 +26,7 @@ Show any code that is needed to
     ## Loading required package: RSQLite.extfuns
 
     ## set the working directory
-    setwd("/Users/bart/Documents/R/Coursera/Cursus5/assignment1")
+    setwd("/Users/bart/Documents/R/Coursera/Cursus5/RepData_PeerAssessment1")
 
     ## cleaning variables
     rm(list=ls())
