@@ -1,4 +1,4 @@
-These files were used earlier in an unfinished course, so they are 2 months old.
+These files were created earlier in an unfinished attempt, so they are some months old.
 
 ## Introduction
 
